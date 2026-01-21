@@ -330,14 +330,17 @@ and assertion = (
 )
 
 and assignable_expression = [
-    `Prim_assi_sele_part of (primary * assignable_selector_part)
-  | `Super_unco_assi_sele of (
-        Token.t (* "super" *) * unconditional_assignable_selector
-    )
-  | `Cons_invo_assi_sele_part of (
-        constructor_invocation * assignable_selector_part
-    )
-  | `Id of identifier (*tok*)
+    `Choice_prim_assi_sele_part of [
+        `Prim_assi_sele_part of (primary * assignable_selector_part)
+      | `Super_unco_assi_sele of (
+            Token.t (* "super" *) * unconditional_assignable_selector
+        )
+      | `Cons_invo_assi_sele_part of (
+            constructor_invocation * assignable_selector_part
+        )
+      | `Id of identifier (*tok*)
+    ]
+  | `Typed_meta of typed_metavariable
 ]
 
 and assignable_selector = [
@@ -418,6 +421,18 @@ and cascade_selector = [
 and cascade_subsection = (
     assignable_selector
   * argument_part list (* zero or more *)
+)
+
+and conditional_expression = (
+    real_expression * Token.t (* "?" *) * expression_without_cascade
+  * Token.t (* ":" *) * expression_without_cascade
+)
+
+and const_object_expression = (
+    const_builtin (*tok*)
+  * type_not_void
+  * dot_identifier option
+  * arguments
 )
 
 and constructor_invocation = (
@@ -581,6 +596,8 @@ and function_body = [
   | `Opt_choice_async_blk of (anon_choice_async_725f72f option * block)
 ]
 
+and function_expression = (formal_parameter_part * function_expression_body)
+
 and function_expression_body = [
     `Opt_async_EQGT_exp of (
         Token.t (* "async" *) option
@@ -625,6 +642,8 @@ and function_type_tail = (
 )
 
 and function_type_tails = function_type_tail list (* one or more *)
+
+and if_null_expression = (real_expression * if_null_expression_)
 
 and if_null_expression_ =
   (Token.t (* "??" *) * real_expression) list (* one or more *)
@@ -676,6 +695,16 @@ and local_variable_declaration = (
     initialized_variable_definition * semicolon
 )
 
+and logical_and_expression = (
+    real_expression
+  * (Token.t (* "&&" *) * real_expression) list (* one or more *)
+)
+
+and logical_or_expression = (
+    real_expression
+  * (Token.t (* "||" *) * real_expression) list (* one or more *)
+)
+
 and metadata = annotation_ list (* one or more *)
 
 and multiplicative_expression = [
@@ -698,6 +727,13 @@ and named_parameter_type = (
 )
 
 and native = (Token.t (* "native" *) * uri option)
+
+and new_expression = (
+    Token.t (* "new" *)
+  * type_not_void
+  * dot_identifier option
+  * arguments
+)
 
 and normal_formal_parameters = (
     formal_parameter
@@ -794,53 +830,40 @@ and postfix_expression_ = [
 ]
 
 and primary = [
-    `Lit of literal
-  | `Func_exp of (formal_parameter_part * function_expression_body)
-  | `Id of identifier (*tok*)
-  | `New_exp of (
-        Token.t (* "new" *)
-      * type_not_void
-      * dot_identifier option
-      * arguments
-    )
-  | `Const_obj_exp of (
-        const_builtin (*tok*)
-      * type_not_void
-      * dot_identifier option
-      * arguments
-    )
-  | `LPAR_exp_RPAR of parenthesized_expression
-  | `This of Token.t (* "this" *)
-  | `Super_unco_assi_sele of (
-        Token.t (* "super" *) * unconditional_assignable_selector
-    )
+    `Choice_lit of [
+        `Lit of literal
+      | `Func_exp of function_expression
+      | `Id of identifier (*tok*)
+      | `New_exp of new_expression
+      | `Const_obj_exp of const_object_expression
+      | `LPAR_exp_RPAR of parenthesized_expression
+      | `This of Token.t (* "this" *)
+      | `Super_unco_assi_sele of (
+            Token.t (* "super" *) * unconditional_assignable_selector
+        )
+    ]
+  | `Typed_meta of typed_metavariable
 ]
 
 and real_expression = [
-    `Cond_exp of (
-        real_expression * Token.t (* "?" *) * expression_without_cascade
-      * Token.t (* ":" *) * expression_without_cascade
-    )
-  | `Logi_or_exp of (
-        real_expression
-      * (Token.t (* "||" *) * real_expression) list (* one or more *)
-    )
-  | `If_null_exp of (real_expression * if_null_expression_)
-  | `Addi_exp of additive_expression
-  | `Mult_exp of multiplicative_expression
-  | `Rela_exp of relational_expression
-  | `Equa_exp of equality_expression
-  | `Logi_and_exp of (
-        real_expression
-      * (Token.t (* "&&" *) * real_expression) list (* one or more *)
-    )
-  | `Bitw_and_exp of bitwise_and_expression
-  | `Bitw_or_exp of bitwise_or_expression
-  | `Bitw_xor_exp of bitwise_xor_expression
-  | `Shift_exp of shift_expression
-  | `Type_cast_exp of (real_expression * type_cast)
-  | `Type_test_exp of (real_expression * type_test)
-  | `Un_exp of unary_expression
+    `Choice_cond_exp of [
+        `Cond_exp of conditional_expression
+      | `Logi_or_exp of logical_or_expression
+      | `If_null_exp of if_null_expression
+      | `Addi_exp of additive_expression
+      | `Mult_exp of multiplicative_expression
+      | `Rela_exp of relational_expression
+      | `Equa_exp of equality_expression
+      | `Logi_and_exp of logical_and_expression
+      | `Bitw_and_exp of bitwise_and_expression
+      | `Bitw_or_exp of bitwise_or_expression
+      | `Bitw_xor_exp of bitwise_xor_expression
+      | `Shift_exp of shift_expression
+      | `Type_cast_exp of type_cast_expression
+      | `Type_test_exp of type_test_expression
+      | `Un_exp of unary_expression
+    ]
+  | `Typed_meta of typed_metavariable
 ]
 
 and relational_expression = [
@@ -1071,6 +1094,8 @@ and type_bound = (Token.t (* "extends" *) * type_not_void)
 
 and type_cast = (as_operator (*tok*) * type_not_void)
 
+and type_cast_expression = (real_expression * type_cast)
+
 and type_not_function = [
     `Type_not_void_not_func of type_not_void_not_function
   | `Void_type of void_type (*tok*)
@@ -1109,7 +1134,13 @@ and type_parameters = (
 
 and type_test = (is_operator * type_not_void)
 
+and type_test_expression = (real_expression * type_test)
+
 and typed_identifier = (type_ * identifier (*tok*))
+
+and typed_metavariable = (
+    Token.t (* "(" *) * type_ * identifier (*tok*) * Token.t (* ")" *)
+)
 
 and unary_expression = [
     `Post_exp of postfix_expression
@@ -1811,18 +1842,6 @@ type await_expression (* inlined *) = (
     Token.t (* "await" *) * unary_expression
 )
 
-type conditional_expression (* inlined *) = (
-    real_expression * Token.t (* "?" *) * expression_without_cascade
-  * Token.t (* ":" *) * expression_without_cascade
-)
-
-type const_object_expression (* inlined *) = (
-    const_builtin (*tok*)
-  * type_not_void
-  * dot_identifier option
-  * arguments
-)
-
 type deep_ellipsis (* inlined *) = (
     Token.t (* "<..." *) * argument * Token.t (* "...>" *)
 )
@@ -1850,19 +1869,11 @@ type for_statement (* inlined *) = (
   * statement
 )
 
-type function_expression (* inlined *) = (
-    formal_parameter_part * function_expression_body
-)
-
 type if_element (* inlined *) = (
     Token.t (* "if" *)
   * parenthesized_expression
   * element
   * (Token.t (* "else" *) * element) option
-)
-
-type if_null_expression (* inlined *) = (
-    real_expression * if_null_expression_
 )
 
 type if_statement (* inlined *) = (
@@ -1885,16 +1896,6 @@ type local_function_declaration (* inlined *) = (
   * lambda_expression
 )
 
-type logical_and_expression (* inlined *) = (
-    real_expression
-  * (Token.t (* "&&" *) * real_expression) list (* one or more *)
-)
-
-type logical_or_expression (* inlined *) = (
-    real_expression
-  * (Token.t (* "||" *) * real_expression) list (* one or more *)
-)
-
 type named_formal_parameters (* inlined *) = (
     Token.t (* "{" *)
   * default_named_parameter
@@ -1909,13 +1910,6 @@ type named_parameter_types (* inlined *) = (
   * (Token.t (* "," *) * named_parameter_type) list (* zero or more *)
   * Token.t (* "," *) option
   * Token.t (* "}" *)
-)
-
-type new_expression (* inlined *) = (
-    Token.t (* "new" *)
-  * type_not_void
-  * dot_identifier option
-  * arguments
 )
 
 type normal_formal_parameter (* inlined *) = (
@@ -1984,10 +1978,6 @@ type try_statement (* inlined *) = (
         )
     ]
 )
-
-type type_cast_expression (* inlined *) = (real_expression * type_cast)
-
-type type_test_expression (* inlined *) = (real_expression * type_test)
 
 type while_statement (* inlined *) = (
     Token.t (* "while" *) * parenthesized_expression * statement

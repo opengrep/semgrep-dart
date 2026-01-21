@@ -12,7 +12,9 @@ module.exports = grammar(base_grammar, {
   conflicts: ($, previous) => previous.concat([
     [$._expression, $.formal_parameter],
     [$.spread_element, $.semgrep_ellipsis],
-    [$._expression, $.expression_statement],
+      [$._expression, $.expression_statement],
+      [$._var_or_type, $._function_formal_parameter, $.typed_metavariable],
+      [$._real_expression, $._primary]
   ]),
 
   /*
@@ -34,6 +36,28 @@ module.exports = grammar(base_grammar, {
     // Alternate "entry point". Allows parsing a standalone expression.
     semgrep_expression: ($) => seq("__SEMGREP_EXPRESSION", $._expression),
 
+    typed_metavariable: $ => seq(
+        '(',
+        field('type', $._type),
+        field('metavar', $.identifier),
+        ')',
+    ),
+
+    assignable_expression: ($, previous) => choice(
+      previous,
+      $.typed_metavariable
+    ),
+
+    _real_expression: ($, previous) => choice(
+      previous,
+      $.typed_metavariable
+    ),
+
+    _primary: ($, previous) => choice(
+      previous,
+      $.typed_metavariable
+    ),
+
     _expression: ($, previous) => choice(
       previous,
       $.semgrep_ellipsis,
@@ -50,3 +74,4 @@ module.exports = grammar(base_grammar, {
     ),
 }
 });
+// real_expression -> _unary_expression -> unary_expression ->
