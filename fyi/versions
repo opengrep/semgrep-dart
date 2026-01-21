@@ -23,7 +23,7 @@ Last change in file:
 ---
 File: semgrep-grammars/src/semgrep-dart/grammar.js
 Git repo name: ocaml-tree-sitter-semgrep
-Latest commit in repo: 62c59803ce966ac00210b5ed8aa163a926f7eaad
+Latest commit in repo: 0d74980bb16749748167c21e090bbc7782471c9a
 Last change in file:
   commit 40fc011bc6e5f0739e7e060e2ed92b5a693c7458
   Author: brandonspark <wu.brandonj@gmail.com>

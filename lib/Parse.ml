@@ -20,7 +20,6 @@ type mt = Run.matcher_token
 external create_parser :
   unit -> Tree_sitter_API.ts_parser = "octs_create_parser_dart"
 
-(* NOTE: Ok because we run one target per domain at any 1 time. *)
 let ts_parser = Domain.DLS.new_key create_parser
 
 let parse_source_string ?src_file contents =
@@ -631,19 +630,22 @@ let children_regexps : (string * Run.exp option) list = [
   "assignable_expression",
   Some (
     Alt [|
-      Seq [
-        Token (Name "primary");
-        Token (Name "assignable_selector_part");
-      ];
-      Seq [
-        Token (Name "super");
-        Token (Name "unconditional_assignable_selector");
-      ];
-      Seq [
-        Token (Name "constructor_invocation");
-        Token (Name "assignable_selector_part");
-      ];
-      Token (Name "identifier");
+      Alt [|
+        Seq [
+          Token (Name "primary");
+          Token (Name "assignable_selector_part");
+        ];
+        Seq [
+          Token (Name "super");
+          Token (Name "unconditional_assignable_selector");
+        ];
+        Seq [
+          Token (Name "constructor_invocation");
+          Token (Name "assignable_selector_part");
+        ];
+        Token (Name "identifier");
+      |];
+      Token (Name "typed_metavariable");
     |];
   );
   "assignable_selector",
@@ -1683,41 +1685,47 @@ let children_regexps : (string * Run.exp option) list = [
   "primary",
   Some (
     Alt [|
-      Token (Name "literal");
-      Token (Name "function_expression");
-      Token (Name "identifier");
-      Token (Name "new_expression");
-      Token (Name "const_object_expression");
-      Seq [
-        Token (Literal "(");
-        Token (Name "expression");
-        Token (Literal ")");
-      ];
-      Token (Name "this");
-      Seq [
-        Token (Name "super");
-        Token (Name "unconditional_assignable_selector");
-      ];
+      Alt [|
+        Token (Name "literal");
+        Token (Name "function_expression");
+        Token (Name "identifier");
+        Token (Name "new_expression");
+        Token (Name "const_object_expression");
+        Seq [
+          Token (Literal "(");
+          Token (Name "expression");
+          Token (Literal ")");
+        ];
+        Token (Name "this");
+        Seq [
+          Token (Name "super");
+          Token (Name "unconditional_assignable_selector");
+        ];
+      |];
+      Token (Name "typed_metavariable");
     |];
   );
   "real_expression",
   Some (
     Alt [|
-      Token (Name "conditional_expression");
-      Token (Name "logical_or_expression");
-      Token (Name "if_null_expression");
-      Token (Name "additive_expression");
-      Token (Name "multiplicative_expression");
-      Token (Name "relational_expression");
-      Token (Name "equality_expression");
-      Token (Name "logical_and_expression");
-      Token (Name "bitwise_and_expression");
-      Token (Name "bitwise_or_expression");
-      Token (Name "bitwise_xor_expression");
-      Token (Name "shift_expression");
-      Token (Name "type_cast_expression");
-      Token (Name "type_test_expression");
-      Token (Name "unary_expression");
+      Alt [|
+        Token (Name "conditional_expression");
+        Token (Name "logical_or_expression");
+        Token (Name "if_null_expression");
+        Token (Name "additive_expression");
+        Token (Name "multiplicative_expression");
+        Token (Name "relational_expression");
+        Token (Name "equality_expression");
+        Token (Name "logical_and_expression");
+        Token (Name "bitwise_and_expression");
+        Token (Name "bitwise_or_expression");
+        Token (Name "bitwise_xor_expression");
+        Token (Name "shift_expression");
+        Token (Name "type_cast_expression");
+        Token (Name "type_test_expression");
+        Token (Name "unary_expression");
+      |];
+      Token (Name "typed_metavariable");
     |];
   );
   "relational_expression",
@@ -2202,6 +2210,15 @@ let children_regexps : (string * Run.exp option) list = [
     Seq [
       Token (Name "type");
       Token (Name "identifier");
+    ];
+  );
+  "typed_metavariable",
+  Some (
+    Seq [
+      Token (Literal "(");
+      Token (Name "type");
+      Token (Name "identifier");
+      Token (Literal ")");
     ];
   );
   "unary_expression",
@@ -4638,41 +4655,51 @@ and trans_assignable_expression ((kind, body) : mt) : CST.assignable_expression 
   | Children v ->
       (match v with
       | Alt (0, v) ->
-          `Prim_assi_sele_part (
+          `Choice_prim_assi_sele_part (
             (match v with
-            | Seq [v0; v1] ->
-                (
-                  trans_primary (Run.matcher_token v0),
-                  trans_assignable_selector_part (Run.matcher_token v1)
+            | Alt (0, v) ->
+                `Prim_assi_sele_part (
+                  (match v with
+                  | Seq [v0; v1] ->
+                      (
+                        trans_primary (Run.matcher_token v0),
+                        trans_assignable_selector_part (Run.matcher_token v1)
+                      )
+                  | _ -> assert false
+                  )
+                )
+            | Alt (1, v) ->
+                `Super_unco_assi_sele (
+                  (match v with
+                  | Seq [v0; v1] ->
+                      (
+                        trans_super (Run.matcher_token v0),
+                        trans_unconditional_assignable_selector (Run.matcher_token v1)
+                      )
+                  | _ -> assert false
+                  )
+                )
+            | Alt (2, v) ->
+                `Cons_invo_assi_sele_part (
+                  (match v with
+                  | Seq [v0; v1] ->
+                      (
+                        trans_constructor_invocation (Run.matcher_token v0),
+                        trans_assignable_selector_part (Run.matcher_token v1)
+                      )
+                  | _ -> assert false
+                  )
+                )
+            | Alt (3, v) ->
+                `Id (
+                  trans_identifier (Run.matcher_token v)
                 )
             | _ -> assert false
             )
           )
       | Alt (1, v) ->
-          `Super_unco_assi_sele (
-            (match v with
-            | Seq [v0; v1] ->
-                (
-                  trans_super (Run.matcher_token v0),
-                  trans_unconditional_assignable_selector (Run.matcher_token v1)
-                )
-            | _ -> assert false
-            )
-          )
-      | Alt (2, v) ->
-          `Cons_invo_assi_sele_part (
-            (match v with
-            | Seq [v0; v1] ->
-                (
-                  trans_constructor_invocation (Run.matcher_token v0),
-                  trans_assignable_selector_part (Run.matcher_token v1)
-                )
-            | _ -> assert false
-            )
-          )
-      | Alt (3, v) ->
-          `Id (
-            trans_identifier (Run.matcher_token v)
+          `Typed_meta (
+            trans_typed_metavariable (Run.matcher_token v)
           )
       | _ -> assert false
       )
@@ -6761,51 +6788,61 @@ and trans_primary ((kind, body) : mt) : CST.primary =
   | Children v ->
       (match v with
       | Alt (0, v) ->
-          `Lit (
-            trans_literal (Run.matcher_token v)
+          `Choice_lit (
+            (match v with
+            | Alt (0, v) ->
+                `Lit (
+                  trans_literal (Run.matcher_token v)
+                )
+            | Alt (1, v) ->
+                `Func_exp (
+                  trans_function_expression (Run.matcher_token v)
+                )
+            | Alt (2, v) ->
+                `Id (
+                  trans_identifier (Run.matcher_token v)
+                )
+            | Alt (3, v) ->
+                `New_exp (
+                  trans_new_expression (Run.matcher_token v)
+                )
+            | Alt (4, v) ->
+                `Const_obj_exp (
+                  trans_const_object_expression (Run.matcher_token v)
+                )
+            | Alt (5, v) ->
+                `LPAR_exp_RPAR (
+                  (match v with
+                  | Seq [v0; v1; v2] ->
+                      (
+                        Run.trans_token (Run.matcher_token v0),
+                        trans_expression (Run.matcher_token v1),
+                        Run.trans_token (Run.matcher_token v2)
+                      )
+                  | _ -> assert false
+                  )
+                )
+            | Alt (6, v) ->
+                `This (
+                  trans_this (Run.matcher_token v)
+                )
+            | Alt (7, v) ->
+                `Super_unco_assi_sele (
+                  (match v with
+                  | Seq [v0; v1] ->
+                      (
+                        trans_super (Run.matcher_token v0),
+                        trans_unconditional_assignable_selector (Run.matcher_token v1)
+                      )
+                  | _ -> assert false
+                  )
+                )
+            | _ -> assert false
+            )
           )
       | Alt (1, v) ->
-          `Func_exp (
-            trans_function_expression (Run.matcher_token v)
-          )
-      | Alt (2, v) ->
-          `Id (
-            trans_identifier (Run.matcher_token v)
-          )
-      | Alt (3, v) ->
-          `New_exp (
-            trans_new_expression (Run.matcher_token v)
-          )
-      | Alt (4, v) ->
-          `Const_obj_exp (
-            trans_const_object_expression (Run.matcher_token v)
-          )
-      | Alt (5, v) ->
-          `LPAR_exp_RPAR (
-            (match v with
-            | Seq [v0; v1; v2] ->
-                (
-                  Run.trans_token (Run.matcher_token v0),
-                  trans_expression (Run.matcher_token v1),
-                  Run.trans_token (Run.matcher_token v2)
-                )
-            | _ -> assert false
-            )
-          )
-      | Alt (6, v) ->
-          `This (
-            trans_this (Run.matcher_token v)
-          )
-      | Alt (7, v) ->
-          `Super_unco_assi_sele (
-            (match v with
-            | Seq [v0; v1] ->
-                (
-                  trans_super (Run.matcher_token v0),
-                  trans_unconditional_assignable_selector (Run.matcher_token v1)
-                )
-            | _ -> assert false
-            )
+          `Typed_meta (
+            trans_typed_metavariable (Run.matcher_token v)
           )
       | _ -> assert false
       )
@@ -6816,64 +6853,74 @@ and trans_real_expression ((kind, body) : mt) : CST.real_expression =
   | Children v ->
       (match v with
       | Alt (0, v) ->
-          `Cond_exp (
-            trans_conditional_expression (Run.matcher_token v)
+          `Choice_cond_exp (
+            (match v with
+            | Alt (0, v) ->
+                `Cond_exp (
+                  trans_conditional_expression (Run.matcher_token v)
+                )
+            | Alt (1, v) ->
+                `Logi_or_exp (
+                  trans_logical_or_expression (Run.matcher_token v)
+                )
+            | Alt (2, v) ->
+                `If_null_exp (
+                  trans_if_null_expression (Run.matcher_token v)
+                )
+            | Alt (3, v) ->
+                `Addi_exp (
+                  trans_additive_expression (Run.matcher_token v)
+                )
+            | Alt (4, v) ->
+                `Mult_exp (
+                  trans_multiplicative_expression (Run.matcher_token v)
+                )
+            | Alt (5, v) ->
+                `Rela_exp (
+                  trans_relational_expression (Run.matcher_token v)
+                )
+            | Alt (6, v) ->
+                `Equa_exp (
+                  trans_equality_expression (Run.matcher_token v)
+                )
+            | Alt (7, v) ->
+                `Logi_and_exp (
+                  trans_logical_and_expression (Run.matcher_token v)
+                )
+            | Alt (8, v) ->
+                `Bitw_and_exp (
+                  trans_bitwise_and_expression (Run.matcher_token v)
+                )
+            | Alt (9, v) ->
+                `Bitw_or_exp (
+                  trans_bitwise_or_expression (Run.matcher_token v)
+                )
+            | Alt (10, v) ->
+                `Bitw_xor_exp (
+                  trans_bitwise_xor_expression (Run.matcher_token v)
+                )
+            | Alt (11, v) ->
+                `Shift_exp (
+                  trans_shift_expression (Run.matcher_token v)
+                )
+            | Alt (12, v) ->
+                `Type_cast_exp (
+                  trans_type_cast_expression (Run.matcher_token v)
+                )
+            | Alt (13, v) ->
+                `Type_test_exp (
+                  trans_type_test_expression (Run.matcher_token v)
+                )
+            | Alt (14, v) ->
+                `Un_exp (
+                  trans_unary_expression (Run.matcher_token v)
+                )
+            | _ -> assert false
+            )
           )
       | Alt (1, v) ->
-          `Logi_or_exp (
-            trans_logical_or_expression (Run.matcher_token v)
-          )
-      | Alt (2, v) ->
-          `If_null_exp (
-            trans_if_null_expression (Run.matcher_token v)
-          )
-      | Alt (3, v) ->
-          `Addi_exp (
-            trans_additive_expression (Run.matcher_token v)
-          )
-      | Alt (4, v) ->
-          `Mult_exp (
-            trans_multiplicative_expression (Run.matcher_token v)
-          )
-      | Alt (5, v) ->
-          `Rela_exp (
-            trans_relational_expression (Run.matcher_token v)
-          )
-      | Alt (6, v) ->
-          `Equa_exp (
-            trans_equality_expression (Run.matcher_token v)
-          )
-      | Alt (7, v) ->
-          `Logi_and_exp (
-            trans_logical_and_expression (Run.matcher_token v)
-          )
-      | Alt (8, v) ->
-          `Bitw_and_exp (
-            trans_bitwise_and_expression (Run.matcher_token v)
-          )
-      | Alt (9, v) ->
-          `Bitw_or_exp (
-            trans_bitwise_or_expression (Run.matcher_token v)
-          )
-      | Alt (10, v) ->
-          `Bitw_xor_exp (
-            trans_bitwise_xor_expression (Run.matcher_token v)
-          )
-      | Alt (11, v) ->
-          `Shift_exp (
-            trans_shift_expression (Run.matcher_token v)
-          )
-      | Alt (12, v) ->
-          `Type_cast_exp (
-            trans_type_cast_expression (Run.matcher_token v)
-          )
-      | Alt (13, v) ->
-          `Type_test_exp (
-            trans_type_test_expression (Run.matcher_token v)
-          )
-      | Alt (14, v) ->
-          `Un_exp (
-            trans_unary_expression (Run.matcher_token v)
+          `Typed_meta (
+            trans_typed_metavariable (Run.matcher_token v)
           )
       | _ -> assert false
       )
@@ -7923,6 +7970,21 @@ and trans_typed_identifier ((kind, body) : mt) : CST.typed_identifier =
           (
             trans_type_ (Run.matcher_token v0),
             trans_identifier (Run.matcher_token v1)
+          )
+      | _ -> assert false
+      )
+  | Leaf _ -> assert false
+
+and trans_typed_metavariable ((kind, body) : mt) : CST.typed_metavariable =
+  match body with
+  | Children v ->
+      (match v with
+      | Seq [v0; v1; v2; v3] ->
+          (
+            Run.trans_token (Run.matcher_token v0),
+            trans_type_ (Run.matcher_token v1),
+            trans_identifier (Run.matcher_token v2),
+            Run.trans_token (Run.matcher_token v3)
           )
       | _ -> assert false
       )
