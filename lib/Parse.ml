@@ -2972,14 +2972,17 @@ let children_regexps : (string * Run.exp option) list = [
             Token (Name "metadata");
           );
           Alt [|
-            Seq [
-              Token (Name "declaration_");
-              Token (Name "semicolon");
-            ];
-            Seq [
-              Token (Name "method_signature");
-              Token (Name "function_body");
-            ];
+            Alt [|
+              Seq [
+                Token (Name "declaration_");
+                Token (Name "semicolon");
+              ];
+              Seq [
+                Token (Name "method_signature");
+                Token (Name "function_body");
+              ];
+            |];
+            Token (Name "semgrep_ellipsis");
           |];
         ];
       );
@@ -9559,26 +9562,36 @@ let trans_class_body ((kind, body) : mt) : CST.class_body =
                       ,
                       (match v1 with
                       | Alt (0, v) ->
-                          `Decl__semi (
+                          `Choice_decl__semi (
                             (match v with
-                            | Seq [v0; v1] ->
-                                (
-                                  trans_declaration_ (Run.matcher_token v0),
-                                  trans_semicolon (Run.matcher_token v1)
+                            | Alt (0, v) ->
+                                `Decl__semi (
+                                  (match v with
+                                  | Seq [v0; v1] ->
+                                      (
+                                        trans_declaration_ (Run.matcher_token v0),
+                                        trans_semicolon (Run.matcher_token v1)
+                                      )
+                                  | _ -> assert false
+                                  )
+                                )
+                            | Alt (1, v) ->
+                                `Meth_sign_func_body (
+                                  (match v with
+                                  | Seq [v0; v1] ->
+                                      (
+                                        trans_method_signature (Run.matcher_token v0),
+                                        trans_function_body (Run.matcher_token v1)
+                                      )
+                                  | _ -> assert false
+                                  )
                                 )
                             | _ -> assert false
                             )
                           )
                       | Alt (1, v) ->
-                          `Meth_sign_func_body (
-                            (match v with
-                            | Seq [v0; v1] ->
-                                (
-                                  trans_method_signature (Run.matcher_token v0),
-                                  trans_function_body (Run.matcher_token v1)
-                                )
-                            | _ -> assert false
-                            )
+                          `Semg_ellips (
+                            trans_semgrep_ellipsis (Run.matcher_token v)
                           )
                       | _ -> assert false
                       )

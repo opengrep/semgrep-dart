@@ -1563,8 +1563,11 @@ type import_or_export = [
 ]
 
 type class_member_definition = [
-    `Decl__semi of (declaration_ * semicolon)
-  | `Meth_sign_func_body of (method_signature * function_body)
+    `Choice_decl__semi of [
+        `Decl__semi of (declaration_ * semicolon)
+      | `Meth_sign_func_body of (method_signature * function_body)
+    ]
+  | `Semg_ellips of Token.t (* "..." *)
 ]
 
 type extension_body = (

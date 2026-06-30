@@ -3686,15 +3686,22 @@ let map_import_or_export (env : env) (x : CST.import_or_export) =
 
 let map_class_member_definition (env : env) (x : CST.class_member_definition) =
   (match x with
-  | `Decl__semi (v1, v2) -> R.Case ("Decl__semi",
-      let v1 = map_declaration_ env v1 in
-      let v2 = map_semicolon env v2 in
-      R.Tuple [v1; v2]
+  | `Choice_decl__semi x -> R.Case ("Choice_decl__semi",
+      (match x with
+      | `Decl__semi (v1, v2) -> R.Case ("Decl__semi",
+          let v1 = map_declaration_ env v1 in
+          let v2 = map_semicolon env v2 in
+          R.Tuple [v1; v2]
+        )
+      | `Meth_sign_func_body (v1, v2) -> R.Case ("Meth_sign_func_body",
+          let v1 = map_method_signature env v1 in
+          let v2 = map_function_body env v2 in
+          R.Tuple [v1; v2]
+        )
+      )
     )
-  | `Meth_sign_func_body (v1, v2) -> R.Case ("Meth_sign_func_body",
-      let v1 = map_method_signature env v1 in
-      let v2 = map_function_body env v2 in
-      R.Tuple [v1; v2]
+  | `Semg_ellips tok -> R.Case ("Semg_ellips",
+      (* "..." *) token env tok
     )
   )
 
