@@ -33,6 +33,12 @@ module.exports = grammar(base_grammar, {
             '<...', $._expression, '...>'
     ),
 
+    semgrep_dot_ellipsis: $ => seq('.', $.semgrep_ellipsis),
+    selector: ($, previous) => choice(
+            previous,
+            $.semgrep_dot_ellipsis
+    ),
+
     // Alternate "entry point". Allows parsing a standalone expression.
     semgrep_expression: ($) => seq("__SEMGREP_EXPRESSION", $._expression),
 
