@@ -552,38 +552,21 @@ let children_regexps : (string * Run.exp option) list = [
   "argument", Some (Token (Name "expression"););
   "argument_list",
   Some (
-    Alt [|
-      Seq [
-        Token (Name "named_argument");
-        Repeat (
-          Seq [
-            Token (Literal ",");
-            Token (Name "named_argument");
-          ];
-        );
-      ];
-      Seq [
+    Seq [
+      Alt [|
         Token (Name "argument");
-        Repeat (
-          Seq [
-            Token (Literal ",");
+        Token (Name "named_argument");
+      |];
+      Repeat (
+        Seq [
+          Token (Literal ",");
+          Alt [|
             Token (Name "argument");
-          ];
-        );
-        Repeat (
-          Seq [
-            Token (Literal ",");
             Token (Name "named_argument");
-            Repeat (
-              Seq [
-                Token (Literal ",");
-                Token (Name "named_argument");
-              ];
-            );
-          ];
-        );
-      ];
-    |];
+          |];
+        ];
+      );
+    ];
   );
   "argument_part",
   Some (
@@ -4514,74 +4497,42 @@ and trans_argument_list ((kind, body) : mt) : CST.argument_list =
   match body with
   | Children v ->
       (match v with
-      | Alt (0, v) ->
-          `Named_arg_rep_COMMA_named_arg (
-            (match v with
-            | Seq [v0; v1] ->
-                (
-                  trans_named_argument (Run.matcher_token v0),
-                  Run.repeat
-                    (fun v ->
-                      (match v with
-                      | Seq [v0; v1] ->
-                          (
-                            Run.trans_token (Run.matcher_token v0),
-                            trans_named_argument (Run.matcher_token v1)
-                          )
-                      | _ -> assert false
-                      )
-                    )
-                    v1
+      | Seq [v0; v1] ->
+          (
+            (match v0 with
+            | Alt (0, v) ->
+                `Arg (
+                  trans_argument (Run.matcher_token v)
+                )
+            | Alt (1, v) ->
+                `Named_arg (
+                  trans_named_argument (Run.matcher_token v)
                 )
             | _ -> assert false
             )
-          )
-      | Alt (1, v) ->
-          `Arg_rep_COMMA_arg_rep_COMMA_named_arg_rep_COMMA_named_arg (
-            (match v with
-            | Seq [v0; v1; v2] ->
-                (
-                  trans_argument (Run.matcher_token v0),
-                  Run.repeat
-                    (fun v ->
-                      (match v with
-                      | Seq [v0; v1] ->
-                          (
-                            Run.trans_token (Run.matcher_token v0),
-                            trans_argument (Run.matcher_token v1)
+            ,
+            Run.repeat
+              (fun v ->
+                (match v with
+                | Seq [v0; v1] ->
+                    (
+                      Run.trans_token (Run.matcher_token v0),
+                      (match v1 with
+                      | Alt (0, v) ->
+                          `Arg (
+                            trans_argument (Run.matcher_token v)
+                          )
+                      | Alt (1, v) ->
+                          `Named_arg (
+                            trans_named_argument (Run.matcher_token v)
                           )
                       | _ -> assert false
                       )
                     )
-                    v1
-                  ,
-                  Run.repeat
-                    (fun v ->
-                      (match v with
-                      | Seq [v0; v1; v2] ->
-                          (
-                            Run.trans_token (Run.matcher_token v0),
-                            trans_named_argument (Run.matcher_token v1),
-                            Run.repeat
-                              (fun v ->
-                                (match v with
-                                | Seq [v0; v1] ->
-                                    (
-                                      Run.trans_token (Run.matcher_token v0),
-                                      trans_named_argument (Run.matcher_token v1)
-                                    )
-                                | _ -> assert false
-                                )
-                              )
-                              v2
-                          )
-                      | _ -> assert false
-                      )
-                    )
-                    v2
+                | _ -> assert false
                 )
-            | _ -> assert false
-            )
+              )
+              v1
           )
       | _ -> assert false
       )

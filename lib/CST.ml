@@ -287,6 +287,11 @@ and anon_arg_rep_COMMA_arg_eb223b2 = (
   * (Token.t (* "," *) * argument) list (* zero or more *)
 )
 
+and anon_choice_arg_10639f7 = [
+    `Arg of argument
+  | `Named_arg of (label * argument)
+]
+
 and anon_elem_rep_COMMA_elem_opt_COMMA_4ec364f = (
     element
   * (Token.t (* "," *) * element) list (* zero or more *)
@@ -295,22 +300,10 @@ and anon_elem_rep_COMMA_elem_opt_COMMA_4ec364f = (
 
 and argument = expression
 
-and argument_list = [
-    `Named_arg_rep_COMMA_named_arg of (
-        named_argument
-      * (Token.t (* "," *) * named_argument) list (* zero or more *)
-    )
-  | `Arg_rep_COMMA_arg_rep_COMMA_named_arg_rep_COMMA_named_arg of (
-        argument
-      * (Token.t (* "," *) * argument) list (* zero or more *)
-      * (
-            Token.t (* "," *)
-          * named_argument
-          * (Token.t (* "," *) * named_argument) list (* zero or more *)
-        )
-          list (* zero or more *)
-    )
-]
+and argument_list = (
+    anon_choice_arg_10639f7
+  * (Token.t (* "," *) * anon_choice_arg_10639f7) list (* zero or more *)
+)
 
 and argument_part = (type_arguments option * arguments)
 
@@ -717,8 +710,6 @@ and multiplicative_expression = [
       * (multiplicative_operator * unary_expression) list (* one or more *)
     )
 ]
-
-and named_argument = (label * argument)
 
 and named_parameter_type = (
     metadata option
@@ -1905,6 +1896,8 @@ type local_function_declaration (* inlined *) = (
     metadata option
   * lambda_expression
 )
+
+type named_argument (* inlined *) = (label * argument)
 
 type named_formal_parameters (* inlined *) = (
     Token.t (* "{" *)

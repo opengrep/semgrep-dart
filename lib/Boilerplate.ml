@@ -613,6 +613,18 @@ and map_anon_arg_rep_COMMA_arg_eb223b2 (env : env) ((v1, v2) : CST.anon_arg_rep_
   in
   R.Tuple [v1; v2]
 
+and map_anon_choice_arg_10639f7 (env : env) (x : CST.anon_choice_arg_10639f7) =
+  (match x with
+  | `Arg x -> R.Case ("Arg",
+      map_argument env x
+    )
+  | `Named_arg (v1, v2) -> R.Case ("Named_arg",
+      let v1 = map_label env v1 in
+      let v2 = map_argument env v2 in
+      R.Tuple [v1; v2]
+    )
+  )
+
 and map_anon_elem_rep_COMMA_elem_opt_COMMA_4ec364f (env : env) ((v1, v2, v3) : CST.anon_elem_rep_COMMA_elem_opt_COMMA_4ec364f) =
   let v1 = map_element env v1 in
   let v2 =
@@ -634,45 +646,16 @@ and map_anon_elem_rep_COMMA_elem_opt_COMMA_4ec364f (env : env) ((v1, v2, v3) : C
 and map_argument (env : env) (x : CST.argument) =
   map_expression env x
 
-and map_argument_list (env : env) (x : CST.argument_list) =
-  (match x with
-  | `Named_arg_rep_COMMA_named_arg (v1, v2) -> R.Case ("Named_arg_rep_COMMA_named_arg",
-      let v1 = map_named_argument env v1 in
-      let v2 =
-        R.List (List.map (fun (v1, v2) ->
-          let v1 = (* "," *) token env v1 in
-          let v2 = map_named_argument env v2 in
-          R.Tuple [v1; v2]
-        ) v2)
-      in
+and map_argument_list (env : env) ((v1, v2) : CST.argument_list) =
+  let v1 = map_anon_choice_arg_10639f7 env v1 in
+  let v2 =
+    R.List (List.map (fun (v1, v2) ->
+      let v1 = (* "," *) token env v1 in
+      let v2 = map_anon_choice_arg_10639f7 env v2 in
       R.Tuple [v1; v2]
-    )
-  | `Arg_rep_COMMA_arg_rep_COMMA_named_arg_rep_COMMA_named_arg (v1, v2, v3) -> R.Case ("Arg_rep_COMMA_arg_rep_COMMA_named_arg_rep_COMMA_named_arg",
-      let v1 = map_argument env v1 in
-      let v2 =
-        R.List (List.map (fun (v1, v2) ->
-          let v1 = (* "," *) token env v1 in
-          let v2 = map_argument env v2 in
-          R.Tuple [v1; v2]
-        ) v2)
-      in
-      let v3 =
-        R.List (List.map (fun (v1, v2, v3) ->
-          let v1 = (* "," *) token env v1 in
-          let v2 = map_named_argument env v2 in
-          let v3 =
-            R.List (List.map (fun (v1, v2) ->
-              let v1 = (* "," *) token env v1 in
-              let v2 = map_named_argument env v2 in
-              R.Tuple [v1; v2]
-            ) v3)
-          in
-          R.Tuple [v1; v2; v3]
-        ) v3)
-      in
-      R.Tuple [v1; v2; v3]
-    )
-  )
+    ) v2)
+  in
+  R.Tuple [v1; v2]
 
 and map_argument_part (env : env) ((v1, v2) : CST.argument_part) =
   let v1 =
@@ -1693,11 +1676,6 @@ and map_multiplicative_expression (env : env) (x : CST.multiplicative_expression
       R.Tuple [v1; v2]
     )
   )
-
-and map_named_argument (env : env) ((v1, v2) : CST.named_argument) =
-  let v1 = map_label env v1 in
-  let v2 = map_argument env v2 in
-  R.Tuple [v1; v2]
 
 and map_named_parameter_type (env : env) ((v1, v2, v3) : CST.named_parameter_type) =
   let v1 =

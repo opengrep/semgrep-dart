@@ -14,7 +14,8 @@ module.exports = grammar(base_grammar, {
     [$.spread_element, $.semgrep_ellipsis],
       [$._expression, $.expression_statement],
       [$._var_or_type, $._function_formal_parameter, $.typed_metavariable],
-      [$._real_expression, $._primary]
+      [$._real_expression, $._primary],
+      [$.argument, $.named_argument]
   ]),
 
   /*
@@ -42,6 +43,15 @@ module.exports = grammar(base_grammar, {
     _class_member_definition: ($, previous) => choice(
             previous,
             $.semgrep_ellipsis
+    ),
+
+    // Permissive argument list so a semgrep ellipsis (a positional argument)
+    // can appear anywhere, including after a named argument, e.g.
+    // 'f(..., name: X, ...)'. The base grammar requires positional args before
+    // named ones; for patterns/lenient parsing we allow any interleaving.
+    _argument_list: $ => seq(
+            choice($.argument, $.named_argument),
+            repeat(seq(',', choice($.argument, $.named_argument)))
     ),
 
     // Alternate "entry point". Allows parsing a standalone expression.
